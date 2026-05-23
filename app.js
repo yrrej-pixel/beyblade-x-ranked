@@ -349,9 +349,11 @@ async function refreshOutgoing() {
   }
 }
 
-function showChallengeModal(challengerName, requestId) {
+function showChallengeModal(senderName, requestId) {
   state.pendingChallengeId = requestId;
-  $('modal-challenger-name').textContent = challengerName;
+  $('modal-sender-name').textContent = senderName;
+  const hint = $('lobby-hint');
+  if (hint) hint.textContent = `${senderName} challenged you — accept or decline below.`;
   const m = $('modal-challenge');
   m.classList.remove('hidden');
   m.classList.add('flex');
@@ -386,6 +388,8 @@ async function respondChallenge(accept) {
     toast('Match accepted! Enter scores.');
   } else {
     toast('Challenge declined.');
+    const hint = $('lobby-hint');
+    if (hint) hint.textContent = 'No pending challenges.';
   }
 }
 
@@ -449,8 +453,8 @@ function openMatchView() {
   $('match-you').textContent = state.player.username;
   $('match-foe').textContent = foe ?? 'Opponent';
   $('match-id').value = m.id;
-  $('lbl-challenger').textContent = `${m.sender?.username ?? 'Sender'} score`;
-  $('lbl-challenged').textContent = `${m.receiver?.username ?? 'Receiver'} score`;
+  $('lbl-sender').textContent = `${m.sender?.username ?? 'Sender'} score`;
+  $('lbl-receiver').textContent = `${m.receiver?.username ?? 'Receiver'} score`;
   $('match-msg').classList.add('hidden');
   showView(V.MATCH);
 }
@@ -461,14 +465,14 @@ function validateScores(a, b) {
   return null;
 }
 
-async function submitScores() {
-  const err = validateScores($('score-challenger').value, $('score-challenged').value);
+async function submitScoresCore() {
+  const err = validateScores($('score-sender').value, $('score-receiver').value);
   if (err) throw new Error(err);
 
   const { data, error } = await getClient().rpc('submit_match_scores', {
     p_request_id: $('match-id').value,
-    p_sender_score: Number($('score-challenger').value),
-    p_receiver_score: Number($('score-challenged').value),
+    p_sender_score: Number($('score-sender').value),
+    p_receiver_score: Number($('score-receiver').value),
   });
   if (error) throw error;
 
@@ -489,6 +493,24 @@ async function submitScores() {
   showView(V.DASH);
   refreshOutgoing();
 }
+
+/** Called from HTML: onclick="submitScores()" */
+async function submitScores() {
+  const msg = $('match-msg');
+  msg.classList.add('hidden');
+  try {
+    await submitScoresCore();
+  } catch (err) {
+    msg.textContent = friendlyDbError(err);
+    msg.className = 'mt-3 text-sm text-center text-red-400';
+    msg.classList.remove('hidden');
+  }
+}
+
+window.submitScores = submitScores;
+
+window.acceptChallenge = () => respondChallenge(true).catch((e) => toast(e.message));
+window.declineChallenge = () => respondChallenge(false).catch((e) => toast(e.message));
 
 // ---------------------------------------------------------------------------
 // Realtime
@@ -633,20 +655,9 @@ function bindEvents() {
     }
   });
 
-  $('btn-accept').addEventListener('click', () => respondChallenge(true).catch((e) => toast(e.message)));
-  $('btn-decline').addEventListener('click', () => respondChallenge(false).catch((e) => toast(e.message)));
-
-  $('form-scores').addEventListener('submit', async (e) => {
+  $('form-scores').addEventListener('submit', (e) => {
     e.preventDefault();
-    const msg = $('match-msg');
-    msg.classList.add('hidden');
-    try {
-      await submitScores();
-    } catch (err) {
-      msg.textContent = friendlyDbError(err);
-      msg.className = 'mt-3 text-sm text-center text-red-400';
-      msg.classList.remove('hidden');
-    }
+    submitScores();
   });
 
   $('btn-back-dash').addEventListener('click', () => showView(V.DASH));
