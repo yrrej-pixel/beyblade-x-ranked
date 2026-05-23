@@ -15,19 +15,19 @@ create index if not exists players_username_lower_idx on public.players (lower(u
 
 create table if not exists public.match_requests (
   id uuid primary key default gen_random_uuid(),
-  challenger_id uuid not null references public.players (id) on delete cascade,
-  challenged_id uuid not null references public.players (id) on delete cascade,
+  sender_id uuid not null references public.players (id) on delete cascade,
+  receiver_id uuid not null references public.players (id) on delete cascade,
   status text not null default 'pending'
     check (status in ('pending', 'accepted', 'declined', 'completed', 'cancelled')),
-  challenger_score integer check (challenger_score is null or (challenger_score >= 0 and challenger_score <= 4)),
-  challenged_score integer check (challenged_score is null or (challenged_score >= 0 and challenged_score <= 4)),
+  sender_score integer check (sender_score is null or (sender_score >= 0 and sender_score <= 4)),
+  receiver_score integer check (receiver_score is null or (receiver_score >= 0 and receiver_score <= 4)),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint different_players check (challenger_id <> challenged_id)
+  constraint different_players check (sender_id <> receiver_id)
 );
 
-create index if not exists match_requests_challenged_pending_idx
-  on public.match_requests (challenged_id, status) where status = 'pending';
+create index if not exists match_requests_receiver_pending_idx
+  on public.match_requests (receiver_id, status) where status = 'pending';
 
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$
@@ -60,16 +60,16 @@ create policy "players_update_own" on public.players
 drop policy if exists "match_requests_select_participant" on public.match_requests;
 create policy "match_requests_select_participant" on public.match_requests
   for select to authenticated
-  using (auth.uid() = challenger_id or auth.uid() = challenged_id);
+  using (auth.uid() = sender_id or auth.uid() = receiver_id);
 
-drop policy if exists "match_requests_insert_challenger" on public.match_requests;
-create policy "match_requests_insert_challenger" on public.match_requests
-  for insert to authenticated with check (auth.uid() = challenger_id);
+drop policy if exists "match_requests_insert_sender" on public.match_requests;
+create policy "match_requests_insert_sender" on public.match_requests
+  for insert to authenticated with check (auth.uid() = sender_id);
 
 drop policy if exists "match_requests_update_participant" on public.match_requests;
 create policy "match_requests_update_participant" on public.match_requests
   for update to authenticated
-  using (auth.uid() = challenger_id or auth.uid() = challenged_id);
+  using (auth.uid() = sender_id or auth.uid() = receiver_id);
 
 -- Realtime: Database → Publications → supabase_realtime → add match_requests
 
@@ -97,8 +97,8 @@ $$;
 
 create or replace function public.submit_match_scores(
   p_request_id uuid,
-  p_challenger_score integer,
-  p_challenged_score integer
+  p_sender_score integer,
+  p_receiver_score integer
 )
 returns jsonb
 language plpgsql
@@ -126,20 +126,20 @@ begin
   select * into v_req from public.match_requests where id = p_request_id for update;
   if not found then raise exception 'Match request not found'; end if;
   if v_req.status <> 'accepted' then raise exception 'Match is not accepted'; end if;
-  if auth.uid() not in (v_req.challenger_id, v_req.challenged_id) then
+  if auth.uid() not in (v_req.sender_id, v_req.receiver_id) then
     raise exception 'Not a participant';
   end if;
-  if p_challenger_score = p_challenged_score then raise exception 'Scores cannot tie'; end if;
-  if greatest(p_challenger_score, p_challenged_score) <> 4 then
+  if p_sender_score = p_receiver_score then raise exception 'Scores cannot tie'; end if;
+  if greatest(p_sender_score, p_receiver_score) <> 4 then
     raise exception 'Winner must reach 4 points';
   end if;
 
-  if p_challenger_score > p_challenged_score then
-    v_winner_id := v_req.challenger_id;
-    v_loser_id := v_req.challenged_id;
+  if p_sender_score > p_receiver_score then
+    v_winner_id := v_req.sender_id;
+    v_loser_id := v_req.receiver_id;
   else
-    v_winner_id := v_req.challenged_id;
-    v_loser_id := v_req.challenger_id;
+    v_winner_id := v_req.receiver_id;
+    v_loser_id := v_req.sender_id;
   end if;
 
   select bey_rating, rank_tier_index(rank_tier), accessories
@@ -194,8 +194,8 @@ begin
 
   update public.match_requests
   set status = 'completed',
-      challenger_score = p_challenger_score,
-      challenged_score = p_challenged_score
+      sender_score = p_sender_score,
+      receiver_score = p_receiver_score
   where id = p_request_id;
 
   return jsonb_build_object(

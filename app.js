@@ -279,13 +279,13 @@ async function enrich(row) {
     getClient()
       .from('players')
       .select('id, username')
-      .in('id', [row.challenger_id, row.challenged_id])
+      .in('id', [row.sender_id, row.receiver_id])
   );
   const map = Object.fromEntries(data.map((p) => [p.id, p]));
   return {
     ...row,
-    challenger: map[row.challenger_id],
-    challenged: map[row.challenged_id],
+    sender: map[row.sender_id],
+    receiver: map[row.receiver_id],
   };
 }
 
@@ -307,7 +307,7 @@ async function sendMatchRequest(opponentUsername) {
       .from('match_requests')
       .select('id')
       .or(
-        `and(challenger_id.eq.${state.player.id},challenged_id.eq.${enemy.id}),and(challenger_id.eq.${enemy.id},challenged_id.eq.${state.player.id})`
+        `and(sender_id.eq.${state.player.id},receiver_id.eq.${enemy.id}),and(sender_id.eq.${enemy.id},receiver_id.eq.${state.player.id})`
       )
       .in('status', ['pending', 'accepted'])
       .limit(1)
@@ -315,9 +315,12 @@ async function sendMatchRequest(opponentUsername) {
 
   if (existing.length) throw new Error('A match is already pending with this player.');
 
+  const myId = state.player.id;
+  const rivalId = enemy.id;
+
   const { error } = await getClient().from('match_requests').insert({
-    challenger_id: state.player.id,
-    challenged_id: enemy.id,
+    sender_id: myId,
+    receiver_id: rivalId,
     status: 'pending',
   });
   if (error) throw error;
@@ -331,7 +334,7 @@ async function refreshOutgoing() {
     getClient()
       .from('match_requests')
       .select('*')
-      .eq('challenger_id', state.player.id)
+      .eq('sender_id', state.player.id)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
   );
@@ -339,7 +342,7 @@ async function refreshOutgoing() {
   const el = $('outgoing-status');
   if (data) {
     const row = await enrich(data);
-    el.textContent = `Waiting for ${row.challenged?.username ?? 'opponent'} to respond…`;
+    el.textContent = `Waiting for ${row.receiver?.username ?? 'opponent'} to respond…`;
     el.classList.remove('hidden');
   } else {
     el.classList.add('hidden');
@@ -372,7 +375,7 @@ async function respondChallenge(accept) {
     .from('match_requests')
     .update({ status })
     .eq('id', id)
-    .eq('challenged_id', state.player.id)
+    .eq('receiver_id', state.player.id)
     .eq('status', 'pending');
 
   if (error) throw error;
@@ -391,14 +394,14 @@ async function checkIncomingChallenge() {
     getClient()
       .from('match_requests')
       .select('*')
-      .eq('challenged_id', state.player.id)
+      .eq('receiver_id', state.player.id)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
   );
 
   if (!data || state.pendingChallengeId) return;
   const row = await enrich(data);
-  showChallengeModal(row.challenger?.username ?? 'A blader', data.id);
+  showChallengeModal(row.sender?.username ?? 'A blader', data.id);
 }
 
 async function loadActiveMatch(requestId) {
@@ -424,7 +427,7 @@ async function findActiveMatch() {
       .from('match_requests')
       .select('*')
       .eq('status', 'accepted')
-      .or(`challenger_id.eq.${uid},challenged_id.eq.${uid}`)
+      .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
       .order('updated_at', { ascending: false })
   );
 
@@ -441,13 +444,13 @@ function openMatchView() {
   if (!m) return;
 
   const me = state.player.id;
-  const foe = m.challenger_id === me ? m.challenged?.username : m.challenger?.username;
+  const foe = m.sender_id === me ? m.receiver?.username : m.sender?.username;
 
   $('match-you').textContent = state.player.username;
   $('match-foe').textContent = foe ?? 'Opponent';
   $('match-id').value = m.id;
-  $('lbl-challenger').textContent = `${m.challenger?.username ?? 'Challenger'} score`;
-  $('lbl-challenged').textContent = `${m.challenged?.username ?? 'Challenged'} score`;
+  $('lbl-challenger').textContent = `${m.sender?.username ?? 'Sender'} score`;
+  $('lbl-challenged').textContent = `${m.receiver?.username ?? 'Receiver'} score`;
   $('match-msg').classList.add('hidden');
   showView(V.MATCH);
 }
@@ -464,8 +467,8 @@ async function submitScores() {
 
   const { data, error } = await getClient().rpc('submit_match_scores', {
     p_request_id: $('match-id').value,
-    p_challenger_score: Number($('score-challenger').value),
-    p_challenged_score: Number($('score-challenged').value),
+    p_sender_score: Number($('score-challenger').value),
+    p_receiver_score: Number($('score-challenged').value),
   });
   if (error) throw error;
 
@@ -507,18 +510,18 @@ function startRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'match_requests' }, async (payload) => {
       const row = payload.new ?? payload.old;
       if (!row) return;
-      if (row.challenger_id !== uid && row.challenged_id !== uid) return;
+      if (row.sender_id !== uid && row.receiver_id !== uid) return;
 
-      if (payload.eventType === 'INSERT' && row.challenged_id === uid && row.status === 'pending') {
+      if (payload.eventType === 'INSERT' && row.receiver_id === uid && row.status === 'pending') {
         const e = await enrich(row);
-        showChallengeModal(e.challenger?.username ?? 'A blader', row.id);
+        showChallengeModal(e.sender?.username ?? 'A blader', row.id);
       }
 
       if (row.status === 'accepted') {
         await loadActiveMatch(row.id);
         if (state.activeMatch) {
           openMatchView();
-          toast(row.challenger_id === uid ? 'Challenge accepted!' : 'Match live — enter scores!');
+          toast(row.sender_id === uid ? 'Waiting for scores…' : 'Match live — enter scores!');
         }
       }
 
