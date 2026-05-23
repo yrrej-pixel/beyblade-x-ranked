@@ -253,7 +253,7 @@ async function lookupPlayerByUsername(enemyName) {
   if (!name) throw new Error('Enter an opponent username.');
 
   const rows = await fetchRows(() =>
-    getClient().from('players').select('id, username').eq('username', name)
+    getClient().from('players').select('id, username').ilike('username', name)
   );
 
   if (rows.length === 0) return null;
@@ -265,7 +265,7 @@ async function lookupPlayerByUsername(enemyName) {
 
 async function isUsernameTaken(name) {
   const rows = await fetchRows(() =>
-    getClient().from('players').select('id').eq('username', name.trim()).limit(1)
+    getClient().from('players').select('id').ilike('username', name.trim()).limit(1)
   );
   return rows.length > 0;
 }
