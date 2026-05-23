@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beyblade X — Ranked</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            void: '#070b12',
+            panel: '#0f172a',
+            edge: '#1e293b',
+            neon: { blue: '#00d4ff', yellow: '#f5ff00', green: '#39ff14' },
+          },
+          fontFamily: {
+            display: ['Orbitron', 'system-ui', 'sans-serif'],
+            body: ['Rajdhani', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            neon: '0 0 24px rgba(0, 212, 255, 0.35)',
+            'neon-green': '0 0 20px rgba(57, 255, 20, 0.3)',
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background:
+        radial-gradient(ellipse 100% 60% at 50% -10%, rgba(0, 212, 255, 0.14), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 80%, rgba(57, 255, 20, 0.06), transparent),
+        #070b12;
+      min-height: 100vh;
+    }
+    .clip { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+    .clip-sm { clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
+    .view { display: none; }
+    .view.active { display: block; }
+    .br-bar {
+      background: linear-gradient(90deg, #00d4ff, #39ff14 65%, #f5ff00);
+      background-size: 200% 100%;
+      animation: shimmer 3s linear infinite;
+      transition: width 0.55s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    input, select {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(0, 212, 255, 0.35);
+      color: #f1f5f9;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #00d4ff;
+      box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+    }
+    .tab-active { border-color: #00d4ff; background: rgba(0, 212, 255, 0.15); color: #00d4ff; }
+  </style>
+</head>
+<body class="font-body text-slate-200 antialiased">
+
+  <header id="app-header" class="hidden border-b border-white/5">
+    <div class="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
+      <p class="font-display font-black text-lg tracking-tight">
+        <span class="text-white">BEYBLADE</span><span class="text-neon-blue"> X</span>
+        <span class="text-[10px] text-neon-yellow ml-2 tracking-[0.35em]">RANKED</span>
+      </p>
+      <button type="button" id="btn-sign-out" class="text-xs uppercase tracking-widest text-slate-500 hover:text-neon-blue">Sign out</button>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-8 sm:py-10">
+
+    <!-- AUTH -->
+    <section id="view-auth" class="view active max-w-md mx-auto">
+      <div class="text-center mb-8">
+        <p class="text-neon-green text-xs tracking-[0.4em] uppercase mb-2">Xtreme League</p>
+        <h1 class="font-display font-black text-4xl text-white">BEYBLADE <span class="text-neon-blue">X</span></h1>
+      </div>
+
+      <div class="bg-panel/90 border border-neon-blue/30 clip p-6 sm:p-8 shadow-neon">
+        <div class="flex gap-2 mb-6">
+          <button type="button" data-tab="login" class="auth-tab flex-1 py-2.5 text-sm font-display uppercase tracking-wider border clip-sm tab-active">Login</button>
+          <button type="button" data-tab="signup" class="auth-tab flex-1 py-2.5 text-sm font-display uppercase tracking-wider border border-white/10 text-slate-500 clip-sm">Sign Up</button>
+        </div>
+
+        <form id="form-login" class="space-y-4">
+          <div>
+            <label for="login-username" class="block text-xs uppercase tracking-widest text-slate-500 mb-1">Username</label>
+            <input id="login-username" type="text" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" autocomplete="username" class="w-full px-4 py-3 rounded clip-sm" placeholder="Your blader name" />
+          </div>
+          <div>
+            <label for="login-password" class="block text-xs uppercase tracking-widest text-slate-500 mb-1">Password</label>
+            <input id="login-password" type="password" required minlength="6" autocomplete="current-password" class="w-full px-4 py-3 rounded clip-sm" />
+          </div>
+          <button type="submit" class="w-full py-3 font-display font-bold uppercase tracking-widest bg-neon-blue text-void clip hover:shadow-neon transition-shadow">Enter Arena</button>
+        </form>
+
+        <form id="form-signup" class="hidden space-y-4">
+          <div>
+            <label for="signup-username" class="block text-xs uppercase tracking-widest text-slate-500 mb-1">Username</label>
+            <input id="signup-username" type="text" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" autocomplete="username" class="w-full px-4 py-3 rounded clip-sm" placeholder="Choose a unique name" />
+            <p class="text-[10px] text-slate-600 mt-1">Letters, numbers, underscores only.</p>
+          </div>
+          <div>
+            <label for="signup-password" class="block text-xs uppercase tracking-widest text-slate-500 mb-1">Password</label>
+            <input id="signup-password" type="password" required minlength="6" autocomplete="new-password" class="w-full px-4 py-3 rounded clip-sm" />
+          </div>
+          <button type="submit" class="w-full py-3 font-display font-bold uppercase tracking-widest bg-gradient-to-r from-neon-green to-emerald-500 text-void clip">Register Blader</button>
+        </form>
+
+        <p id="auth-message" class="mt-4 text-sm text-center hidden"></p>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view space-y-5">
+      <article class="bg-panel/95 border border-neon-blue/25 clip p-6 sm:p-8 relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-blue to-transparent"></div>
+        <div class="flex justify-between items-start gap-4 mb-6">
+          <div>
+            <p class="text-[10px] uppercase tracking-[0.3em] text-slate-500">Blader</p>
+            <h2 id="dash-username" class="font-display text-3xl font-bold text-white mt-1">—</h2>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] uppercase tracking-widest text-slate-500">Rank</p>
+            <p id="dash-rank" class="font-display text-xl text-neon-yellow mt-1">—</p>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <div class="flex justify-between text-xs mb-2">
+            <span class="uppercase tracking-widest text-slate-500">Bey Rating</span>
+            <span id="dash-br-text" class="font-display text-neon-blue font-semibold">0 / 100</span>
+          </div>
+          <div class="h-2.5 bg-edge rounded-full overflow-hidden border border-white/5">
+            <div id="dash-br-bar" class="br-bar h-full rounded-full" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-[10px] uppercase tracking-widest text-slate-500 mb-3">Unlocked Accessories</p>
+          <ul id="dash-accessories" class="space-y-2 max-h-36 overflow-y-auto text-sm"></ul>
+        </div>
+      </article>
+
+      <article class="bg-panel/95 border border-neon-green/25 clip p-5 sm:p-6">
+        <h3 class="font-display text-sm text-neon-green tracking-wider mb-4">Challenge Rival</h3>
+        <form id="form-challenge" class="flex flex-col sm:flex-row gap-3">
+          <input id="challenge-username" type="text" required placeholder="Opponent username" class="flex-1 px-4 py-3 rounded clip-sm" />
+          <button type="submit" class="px-5 py-3 font-display text-xs uppercase tracking-widest border border-neon-green text-neon-green clip-sm hover:bg-neon-green/10 whitespace-nowrap">Send Match Request</button>
+        </form>
+        <p id="challenge-msg" class="mt-2 text-sm hidden"></p>
+        <p id="outgoing-status" class="mt-3 text-sm text-slate-500 hidden"></p>
+      </article>
+    </section>
+
+    <!-- MATCH SCORING -->
+    <section id="view-match" class="view">
+      <div class="bg-panel border-2 border-neon-blue/40 clip p-6 sm:p-8">
+        <p class="text-[10px] uppercase tracking-[0.35em] text-neon-yellow mb-2">Active Match</p>
+        <h2 class="font-display text-2xl mb-6">
+          <span id="match-you" class="text-white">You</span>
+          <span class="text-neon-yellow mx-2">VS</span>
+          <span id="match-foe" class="text-neon-green">Foe</span>
+        </h2>
+        <form id="form-scores" class="space-y-5">
+          <input type="hidden" id="match-id" />
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label id="lbl-challenger" class="block text-xs uppercase text-slate-500 mb-2">Challenger</label>
+              <select id="score-challenger" class="w-full px-4 py-3 font-display text-neon-blue rounded clip-sm" required>
+                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option>
+              </select>
+            </div>
+            <div>
+              <label id="lbl-challenged" class="block text-xs uppercase text-slate-500 mb-2">Challenged</label>
+              <select id="score-challenged" class="w-full px-4 py-3 font-display text-neon-green rounded clip-sm" required>
+                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option>
+              </select>
+            </div>
+          </div>
+          <p class="text-center text-xs text-slate-600">Win +25 BR · Loss −15 BR · First to 4</p>
+          <div class="flex gap-3">
+            <button type="button" id="btn-back-dash" class="flex-1 py-3 text-xs uppercase border border-slate-600 text-slate-400 clip-sm">Dashboard</button>
+            <button type="submit" class="flex-1 py-3 font-display font-bold uppercase bg-neon-blue text-void clip">Submit Result</button>
+          </div>
+        </form>
+        <p id="match-msg" class="mt-3 text-sm text-center hidden"></p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Challenge modal -->
+  <div id="modal-challenge" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="w-full max-w-md bg-panel border-2 border-neon-yellow clip p-6 sm:p-8 text-center shadow-neon">
+      <p class="text-neon-yellow text-xs uppercase tracking-[0.35em] mb-3">Incoming Challenge</p>
+      <p class="text-lg mb-6"><span id="modal-challenger-name" class="font-display text-neon-blue font-bold">—</span> has challenged you!</p>
+      <div class="flex gap-3 justify-center">
+        <button type="button" id="btn-decline" class="px-5 py-2.5 text-xs uppercase border border-slate-600 text-slate-400 clip-sm">Decline</button>
+        <button type="button" id="btn-accept" class="px-5 py-2.5 text-xs uppercase bg-neon-green/20 text-neon-green border border-neon-green clip-sm">Accept</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rank up modal -->
+  <div id="modal-rankup" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="w-full max-w-sm bg-panel border-2 border-neon-yellow clip p-8 text-center">
+      <h2 class="font-display text-4xl font-black text-white mb-2">RANK UP!</h2>
+      <p id="rankup-tier" class="font-display text-xl text-neon-green mb-4"></p>
+      <p class="text-xs text-slate-500 uppercase mb-1">Unlocked</p>
+      <p id="rankup-item" class="text-neon-yellow font-display text-lg mb-6"></p>
+      <button type="button" id="btn-rankup-close" class="px-6 py-2 text-xs uppercase border border-neon-blue text-neon-blue clip-sm">Continue</button>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 hidden px-5 py-3 bg-panel border border-neon-blue/50 clip-sm text-sm font-semibold shadow-neon max-w-[90vw] text-center"></div>
+
+  <script>
+    window.BEYBLADE_CONFIG = {
+      url: 'https://mpbjlzptmlbbqdgnsvvp.supabase.co',
+      key: 'sb_publishable_fL6CbHBY35QTMTd_DW5LTQ_jKI9dLdj',
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
+  <script src="app.js?v=6" defer></script>
+</body>
+</html>
